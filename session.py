@@ -73,7 +73,11 @@ def calculate_average_round_reaction(session_id):
         # Store the results in a list
         average_round_reaction.append(current_round_reaction_average)
 
-    return average_round_reaction
+    return {
+        average_feeling_before,
+        average_feeling_after,
+        average_round_reaction
+    }
 
 
 # Test:
