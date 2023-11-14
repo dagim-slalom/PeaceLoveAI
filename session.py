@@ -4,32 +4,31 @@ import boto3
 dynamodb = boto3.client("dynamodb")
 
 # Define the table names
-game_table_name = "Game"
+player_table_name = "Player"
 reaction_table_name = "ArtWorkReaction"
 
 
 def calculate_average_round_reaction(session_id):
     # Define the query parameters for the Game table
     game_query_params = {
-        "TableName": game_table_name,
+        "TableName": player_table_name,
         "KeyConditionExpression": "sessionId = :id",
         "ExpressionAttributeValues": {":id": {"S": session_id}},
-        "ProjectionExpression": "gameId, feelingBefore, feelingAfter",
+        "ProjectionExpression": "feelingBefore, feelingAfter",
     }
 
     # Perform the query on the Game table
     game_response = dynamodb.query(**game_query_params)
 
     # Extract items from the Game table response
-    game_items = game_response.get("Items", [])
+    player_items = game_response.get("Items", [])
 
-    # Extract 'gameId', 'feelingBefore', 'feelingAfter', and 'playerCardId' values into separate lists
-    game_ids = [item.get("gameId", {}).get("S", "") for item in game_items]
+    # Extract 'feelingBefore' and 'feelingAfter' values into separate lists
     feeling_before_list = [
-        float(item.get("feelingBefore", {}).get("N", 0)) for item in game_items
+        float(item.get("feelingBefore", {}).get("N", 0)) for item in player_items
     ]
     feeling_after_list = [
-        float(item.get("feelingAfter", {}).get("N", 0)) for item in game_items
+        float(item.get("feelingAfter", {}).get("N", 0)) for item in player_items
     ]
 
     # Calculate the average feelingBefore and feelingAfter
@@ -43,40 +42,37 @@ def calculate_average_round_reaction(session_id):
     )
     num_players = len(feeling_before_list)
 
-    # Query the ArtWorkReaction table for each gameId and count the number of reactions and unique playerCardIds
-    average_round_reaction = []
+    # Query the ArtWorkReaction table for this sessionId and count the number of reactions and unique playerCardIds
+    # As of now, sessionId is not a secondary index in the ArtWorkReaction table so this may need to be updated
 
-    for game_id in game_ids:
-        # Define the query parameters for the ArtWorkReaction table
-        reaction_query_params = {
-            "TableName": reaction_table_name,
-            "KeyConditionExpression": "gameId = :id",
-            "ExpressionAttributeValues": {":id": {"S": game_id}},
-            "ProjectionExpression": "playerCardId, reactionValue",
-        }
+    # Define the query parameters for the ArtWorkReaction table
+    reaction_query_params = {
+        "TableName": reaction_table_name,
+        "KeyConditionExpression": "sessionId = :id",
+        "ExpressionAttributeValues": {":id": {"S": session_id}},
+        "ProjectionExpression": "playerCardId, reaction",
+    }
 
-        # Perform the query on the ArtWorkReaction table
-        reaction_response = dynamodb.query(**reaction_query_params)
+    # Perform the query on the ArtWorkReaction table
+    reaction_response = dynamodb.query(**reaction_query_params)
 
-        # Extract 'playerCardId' values into a list
-        player_card_ids_in_game = [
-            item.get("playerCardId", {}).get("S", "")
-            for item in reaction_response.get("Items", [])
-        ]
+    # Extract 'playerCardId' values into a list
+    player_card_ids_in_game = [
+        item.get("playerCardId", {}).get("S", "")
+        for item in reaction_response.get("Items", [])
+    ]
 
-        # Count the number of unique playerCardIds and store in the dictionary
-        num_unique_player_card_ids = len(set(player_card_ids_in_game))
-        reactions_per_game = len(reaction_response.get("Items", []))
-        max_round_reaction = num_unique_player_card_ids * num_players * 5
-        current_round_reaction_average = (reactions_per_game / max_round_reaction) * 5
+    # Count the number of unique playerCardIds and store in the dictionary
+    num_unique_player_card_ids = len(set(player_card_ids_in_game))
+    num_reactions_per_session = len(reaction_response.get("Items", []))
+    max_session_reaction = num_unique_player_card_ids * num_players * 5
+    average_session_reaction = (num_reactions_per_session / max_session_reaction) * 5
 
-        # Store the results in a list
-        average_round_reaction.append(current_round_reaction_average)
 
     return {
         average_feeling_before,
         average_feeling_after,
-        average_round_reaction
+        average_session_reaction
     }
 
 
