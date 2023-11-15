@@ -16,10 +16,10 @@ def qualify_sentiments(sentiment_value):
         return "very happy"
 
 
-def lambda_handler(session_sentiments):
-    initial_sentiment = qualify_sentiments(session_sentiments["pre_game_average"])
-    final_sentiment = qualify_sentiments(session_sentiments["post_game_average"])
-    game_sentiment = qualify_sentiments(session_sentiments["session_average"])
+def lambda_handler(event):
+    initial_sentiment = qualify_sentiments(event["pre_game_average"])
+    final_sentiment = qualify_sentiments(event["post_game_average"])
+    game_sentiment = qualify_sentiments(event["session_average"])
 
     session_prompt = f"""Depict an abstract artistic representation of a heatmap, with gradients of color intensity
          representing a range of sentiments. The initial sentiment is {initial_sentiment}.
@@ -38,7 +38,7 @@ def lambda_handler(session_sentiments):
     print(image_url)
 
     return { "image": image_url,
-             "sessionId": session_sentiments["sessionId"]
+             "sessionId": event["sessionId"]
     }
 
 # # Test Value
